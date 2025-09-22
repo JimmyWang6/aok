@@ -174,7 +174,7 @@ public class AmqpChannel implements ServerChannelMethodProcessor {
 
     @Override
     public void receiveTxSelect() {
-
+        System.out.println("test pr");
     }
 
     @Override
