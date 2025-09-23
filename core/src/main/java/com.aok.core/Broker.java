@@ -32,8 +32,10 @@ import java.util.concurrent.CountDownLatch;
 @Slf4j
 public class Broker {
 
+    public static final int DEFAULT_BIND_PORT = 5674;
+
     private final CountDownLatch shutdownLatch = new CountDownLatch(1);
-    
+
     public void awaitShutdown() throws InterruptedException {
         shutdownLatch.await();
     }
@@ -48,7 +50,7 @@ public class Broker {
             .option(ChannelOption.SO_REUSEADDR, true)
             .childOption(ChannelOption.SO_KEEPALIVE, false)
             .childOption(ChannelOption.TCP_NODELAY, true)
-            .localAddress(new InetSocketAddress("localhost", 5674))
+            .localAddress(new InetSocketAddress("localhost", DEFAULT_BIND_PORT))
             .childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 protected void initChannel(SocketChannel socketChannel) {
@@ -58,12 +60,12 @@ public class Broker {
                 }
             });
             try {
-                serverBootstrap.bind(5674).sync();
+                serverBootstrap.bind(DEFAULT_BIND_PORT).sync();
             } catch (Exception e) {
                 e.printStackTrace();
                 System.exit(1);
             }
-            log.info("Broker start up success");
+            log.info("Broker start up success, listening on port {}", DEFAULT_BIND_PORT);
     }
     
     public static void main(String[] args) throws InterruptedException {

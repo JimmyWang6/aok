@@ -19,39 +19,37 @@
 package com.aok.core;
 
 import org.apache.qpid.server.bytebuffer.QpidByteBuffer;
-import org.apache.qpid.server.bytebuffer.SingleQpidByteBuffer;
 import org.apache.qpid.server.transport.ByteBufferSender;
 
 import java.nio.ByteBuffer;
 
 public class SimpleEncodeBufferSender implements ByteBufferSender {
 
-    private final ByteBuffer byteBuffer;
+    private final QpidByteBuffer byteBuffer;
 
-    private final boolean isDirect;
-
-    public SimpleEncodeBufferSender(int capacity, boolean isDirect) {
-        this.isDirect = isDirect;
-        this.byteBuffer = isDirect ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
+    public SimpleEncodeBufferSender(int capacity) {
+        this.byteBuffer = QpidByteBuffer.allocateDirect(capacity);
     }
 
-    @Override 
+    @Override
     public boolean isDirectBufferPreferred() {
-        return isDirect;
+        return true;
     }
 
-    @Override 
-    public void send(QpidByteBuffer buffer) {
-        byteBuffer.put(((SingleQpidByteBuffer) buffer.duplicate()).getUnderlyingBuffer());
+    @Override
+    public void send(QpidByteBuffer msg) {
+        try (QpidByteBuffer dup = msg.duplicate()) {
+            this.byteBuffer.put(dup);
+        }
     }
 
-    @Override 
+    @Override
     public void flush() {}
 
-    @Override 
+    @Override
     public void close() {}
 
-    public ByteBuffer getBuffer() {
+    public QpidByteBuffer getBuffer() {
         return byteBuffer;
     }
 }
