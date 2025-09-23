@@ -44,6 +44,9 @@ public class InMemoryMetaContainer implements MetaContainer<Meta> {
 
     public Meta get(Class<?> classType, String vhost, String name) {
         MetaType type = classType.getAnnotation(MetaType.class);
+        if (type == null) {
+            return null;
+        }
         MetaKey key = new MetaKey(type.value(), vhost, name);
         return map.get(key);
     }
