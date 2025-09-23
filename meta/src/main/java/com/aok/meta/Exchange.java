@@ -27,10 +27,10 @@ public class Exchange extends Meta {
     public Exchange(String vhost, String name, ExchangeType type, Boolean autoDelete, Boolean internal, HashMap<String, Object> arguments) {
         setVhost(vhost);
         setName(name);
-        type = type;
-        autoDelete = autoDelete;
-        internal = internal;
-        arguments = arguments;
+        this.type = type;
+        this.autoDelete = autoDelete;
+        this.internal = internal;
+        this.arguments = arguments;
     }
 
     private ExchangeType type;
