@@ -44,6 +44,6 @@ public class ExchangeService {
     }
 
     public int size() {
-        return metaContainer.list(Exchange.class).size();
+        return metaContainer.size(Exchange.class);
     }
 }
