@@ -26,7 +26,7 @@ public class QueueService {
     
     private final MetaContainer<Queue> metaContainer;
     
-    QueueService(MetaContainer<Queue> metaContainer) {
+    public QueueService(MetaContainer<Queue> metaContainer) {
         this.metaContainer = metaContainer;
     }
     
