@@ -19,7 +19,7 @@ package com.aok.meta;
 import lombok.Data;
 
 @Data
-@MetaType("vhost")
+@MetaType("binding")
 public class Binding extends Meta {
 
     public Binding(String source, String destination, String routingKey) {
