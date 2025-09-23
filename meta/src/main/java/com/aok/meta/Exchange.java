@@ -24,6 +24,15 @@ import java.util.HashMap;
 @MetaType("exchange")
 public class Exchange extends Meta {
 
+    public Exchange(String vhost, String name, ExchangeType type, Boolean autoDelete, Boolean internal, HashMap<String, Object> arguments) {
+        setVhost(vhost);
+        setName(name);
+        type = type;
+        autoDelete = autoDelete;
+        internal = internal;
+        arguments = arguments;
+    }
+
     private ExchangeType type;
 
     private Boolean durable;

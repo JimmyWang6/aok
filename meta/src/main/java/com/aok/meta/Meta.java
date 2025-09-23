@@ -22,6 +22,8 @@ import java.io.Serializable;
 
 @Data
 public class Meta implements Serializable {
+    
+    //TODO add uuid scope
 
     private String vhost;
     

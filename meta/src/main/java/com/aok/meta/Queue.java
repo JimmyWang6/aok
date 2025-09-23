@@ -24,11 +24,23 @@ import java.util.HashMap;
 @MetaType("queue")
 public class Queue extends Meta {
     
+    public Queue(String vhost, String name, Boolean exclusive, Boolean autoDelete, Boolean durable, Boolean internal, HashMap<String, String> arguments) {
+        this.setVhost(vhost);
+        this.setName(name);
+        this.exclusive = exclusive;
+        this.autoDelete = autoDelete;
+        this.durable = durable;
+        this.internal = internal;
+        this.arguments = arguments;
+    }
+    
     private Boolean durable;
+    
+    private Boolean exclusive;
     
     private Boolean autoDelete;
     
-    private boolean internal;
+    private Boolean internal;
     
     private HashMap<String, String> arguments;
 }

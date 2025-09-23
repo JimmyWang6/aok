@@ -48,7 +48,7 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
     
     private AmqpChannel amqpChannel;
     
-    private ConcurrentHashMap<Integer, AmqpChannel> channels = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, AmqpChannel> channels = new ConcurrentHashMap<>();
 
     private final MethodRegistry registry = new MethodRegistry(AmqpConstants.PROTOCOL_VERSION);
 

@@ -31,28 +31,35 @@ public interface MetaContainer<T extends Meta> {
      * Adds a Meta object to the container.
      * @param meta the Meta object to add
      */
-    void add(T meta);
+    Meta add(T meta);
 
     /**
      * Removes a Meta object from the container.
      * @param meta the Meta object to remove
      */
-    void remove(T meta);
+    Meta delete(T meta);
 
     /**
      * Retrieves a Meta object by type, vhost, and name.
-     * @param type the type of Meta
+     * @param classType the type of Meta
      * @param vhost the virtual host
      * @param name the name of Meta
      * @return the Meta object if found, otherwise null
      */
-    Meta getMeta(String type, String vhost, String name);
-
+    Meta get(Class<?> classType, String vhost, String name);
+    
     /**
      * Lists all Meta objects in the container.
      * @return a list of Meta objects
      */
-    List<T> list();
+    List<T> list(Class<?> classType);
+    
+    /**
+     * Gets the count of Meta objects of a specific type in the container.
+     * @param classType the class type of Meta
+     * @return the count of Meta objects
+     */
+    int size(Class<?> classType);
 
     /**
      * Updates a Meta object in the container.
@@ -67,6 +74,9 @@ public interface MetaContainer<T extends Meta> {
      */
     default String getMetaType(Meta meta) {
         MetaType type = meta.getClass().getAnnotation(MetaType.class);
+        if (type == null) {
+            throw new IllegalArgumentException("Meta class must be annotated with @MetaType");
+        }
         return type.value();
     }
 }

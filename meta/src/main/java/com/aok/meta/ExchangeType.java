@@ -17,4 +17,44 @@
 package com.aok.meta;
 
 public enum ExchangeType {
+
+    Direct("direct"),
+    Fanout("fanout"),
+    Topic("topic"),
+    Headers("headers"),
+    ConsistentHash("x-consistent-hash"),
+    DelayedMessage("x-delayed-message");
+
+    private String value;
+
+    ExchangeType(String value) {
+        this.value = value;
+    }
+
+    public static ExchangeType value(String type) {
+        if (type == null || type.isEmpty()) {
+            throw new IllegalArgumentException("Illegal Exchange Type");
+        }
+        type = type.toLowerCase();
+        switch (type) {
+            case "direct":
+                return Direct;
+            case "fanout":
+                return Fanout;
+            case "topic":
+                return Topic;
+            case "headers":
+                return Headers;
+            case "x-consistent-hash":
+                return ConsistentHash;
+            case "x-delayed-message":
+                return DelayedMessage;
+            default:
+                throw new IllegalArgumentException("Unknown Exchange Type: " + type);
+        }
+    }
+
+    public String getValue() {
+        return value;
+    }
 }

@@ -21,4 +21,8 @@ import lombok.Data;
 @Data
 @MetaType("vhost")
 public class Vhost extends Meta {
+    public Vhost(String name) {
+        this.setVhost(name);
+        this.setName(name);
+    }
 }

@@ -14,23 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.aok.meta;
+package com.aok.meta.service;
 
-import lombok.Data;
+import com.aok.meta.Vhost;
+import com.aok.meta.container.MetaContainer;
 
-@Data
-@MetaType("vhost")
-public class Binding extends Meta {
+import java.util.List;
 
-    public Binding(String source, String destination, String routingKey) {
-        this.source = source;
-        this.destination = destination;
-        this.routingKey = routingKey;
+public class VhostService {
+
+    private final MetaContainer<Vhost> metaContainer;
+
+    VhostService(MetaContainer<Vhost> metaContainer) {
+        this.metaContainer = metaContainer;
     }
 
-    private String source;
+    public Vhost addVhost(String name) {
+        Vhost vhost = new Vhost(name);
+        return (Vhost) metaContainer.add(vhost);
+    }
 
-    private String destination;
+    public Vhost deleteVhost(Vhost vhost) {
+        return (Vhost) metaContainer.delete(vhost);
+    }
 
-    private String routingKey;
+    public List<Vhost> listVhost() {
+        return metaContainer.list(Vhost.class);
+    }
+
+    public int size() {
+        return metaContainer.size(Vhost.class);
+    }
 }

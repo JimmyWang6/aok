@@ -18,8 +18,8 @@ package com.aok.meta.container;
 
 import com.aok.meta.Meta;
 import com.aok.meta.MetaKey;
+import com.aok.meta.MetaType;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,27 +29,37 @@ public class InMemoryMetaContainer implements MetaContainer<Meta> {
     private final Map<MetaKey, Meta> map = new ConcurrentHashMap<>();
 
     @Override
-    public synchronized void add(Meta meta) {
+    public synchronized Meta add(Meta meta) {
         String type = getMetaType(meta);
         MetaKey key = new MetaKey(type, meta.getVhost(), meta.getName());
-        map.put(key, meta);
+        return map.put(key, meta);
     }
 
     @Override
-    public synchronized void remove(Meta meta) {
+    public synchronized Meta delete(Meta meta) {
         String type = getMetaType(meta);
         MetaKey key = new MetaKey(type, meta.getVhost(), meta.getName());
-        map.remove(key);
+        return map.remove(key);
     }
 
-    public Meta getMeta(String type, String vhost, String name) {
-        MetaKey key = new MetaKey(type, vhost, name);
+    public Meta get(Class<?> classType, String vhost, String name) {
+        MetaType type = classType.getAnnotation(MetaType.class);
+        MetaKey key = new MetaKey(type.value(), vhost, name);
         return map.get(key);
     }
 
     @Override
-    public List<Meta> list() {
-        return new ArrayList<>(map.values());
+    public List<Meta> list(Class<?> classType) {
+        MetaType type = classType.getAnnotation(MetaType.class);
+        if (type == null) {
+            return List.of();
+        }
+        return map.values().stream().filter(meta -> getMetaType(meta).equals(type.value())).toList();
+    }
+    
+    @Override
+    public int size(Class<?> classType) {
+        return list(classType).size();
     }
 
     @Override
