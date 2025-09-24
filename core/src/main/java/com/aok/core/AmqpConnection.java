@@ -16,6 +16,10 @@
  */
 package com.aok.core;
 
+import com.aok.meta.service.BindingService;
+import com.aok.meta.service.ExchangeService;
+import com.aok.meta.service.QueueService;
+import com.aok.meta.service.VhostService;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -44,17 +48,36 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 @Slf4j
 public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodProcessor<ServerChannelMethodProcessor> {
 
+    private final VhostService vhostService;
+
+    @Getter
+    private String vhost;
+
+    private final ExchangeService exchangeService;
+
+    private final QueueService queueService;
+
+    private final BindingService bindingService;
+
     private AmqpBrokerDecoder brokerDecoder;
     
     private AmqpChannel amqpChannel;
     
     private final ConcurrentHashMap<Integer, AmqpChannel> channels = new ConcurrentHashMap<>();
 
+    @Getter
     private final MethodRegistry registry = new MethodRegistry(AmqpConstants.PROTOCOL_VERSION);
 
     private volatile int currentClassId;
 
     private volatile int currentMethodId;
+
+    AmqpConnection(VhostService vhostService, ExchangeService exchangeService, QueueService queueService, BindingService bindingService) {
+        this.vhostService = vhostService;
+        this.exchangeService = exchangeService;
+        this.queueService = queueService;
+        this.bindingService = bindingService;
+    }
 
     @Getter
     private ChannelHandlerContext ctx;
@@ -80,6 +103,7 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
 
     @Override
     public void receiveConnectionOpen(AMQShortString virtualHost, AMQShortString capabilities, boolean insist) {
+        this.vhost = AMQShortString.toString(virtualHost);
         AMQMethodBody responseBody = registry.createConnectionOpenOkBody(virtualHost);
         writeFrame(responseBody.generateFrame(0));
     }
@@ -87,7 +111,7 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
     @Override
     public void receiveChannelOpen(int channelId) {
         ChannelOpenOkBody response = registry.createChannelOpenOkBody();
-        addChannel(new AmqpChannel(this, channelId));
+        addChannel(new AmqpChannel(this, channelId, vhostService, exchangeService, queueService, bindingService));
         writeFrame(response.generateFrame(channelId));
     }
 
@@ -182,14 +206,11 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
     }
 
     private void addChannel(AmqpChannel channel) {
-        this.channels.put(channel.channelId, channel);
+        this.channels.put(channel.getChannelId(), channel);
     }
 
     public AmqpChannel getChannel(int channelId) {
         return channels.get(channelId);
     }
 
-    public MethodRegistry getRegistry() {
-        return registry;
-    }
 }

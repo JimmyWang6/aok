@@ -18,6 +18,16 @@
  */
 package com.aok.core;
 
+import com.aok.meta.Exchange;
+import com.aok.meta.ExchangeType;
+import com.aok.meta.Queue;
+import com.aok.meta.service.BindingService;
+import com.aok.meta.service.ExchangeService;
+import com.aok.meta.service.QueueService;
+import com.aok.meta.service.VhostService;
+import io.netty.util.internal.StringUtil;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.qpid.server.bytebuffer.QpidByteBuffer;
 import org.apache.qpid.server.protocol.v0_8.AMQShortString;
 import org.apache.qpid.server.protocol.v0_8.FieldTable;
@@ -29,15 +39,36 @@ import org.apache.qpid.server.protocol.v0_8.transport.QueueDeclareOkBody;
 import org.apache.qpid.server.protocol.v0_8.transport.QueueUnbindOkBody;
 import org.apache.qpid.server.protocol.v0_8.transport.ServerChannelMethodProcessor;
 
+@Slf4j
 public class AmqpChannel implements ServerChannelMethodProcessor {
     
-    protected AmqpConnection connection;
+    private final AmqpConnection connection;
+
+    @Getter
+    private final int channelId;
+
+    private final VhostService vhostService;
+
+    private final BindingService bindingService;
+
+    private final ExchangeService exchangeService;
+
+    private  final QueueService queueService;
     
-    protected int channelId;
-    
-    AmqpChannel(AmqpConnection connection, int channelId) {
+    AmqpChannel(
+        AmqpConnection connection,
+        int channelId,
+        VhostService vhostService,
+        ExchangeService exchangeService,
+        QueueService queueService,
+        BindingService bindingService
+    ) {
         this.connection = connection;
         this.channelId = channelId;
+        this.vhostService = vhostService;
+        this.exchangeService = exchangeService;
+        this.queueService = queueService;
+        this.bindingService = bindingService;
     }
 
     @Override
@@ -48,11 +79,20 @@ public class AmqpChannel implements ServerChannelMethodProcessor {
 
     @Override
     public void receiveExchangeDeclare(AMQShortString exchange, AMQShortString type, boolean passive, boolean durable, boolean autoDelete, boolean internal, boolean nowait, FieldTable arguments) {
+        String exchangeName = exchange == null ? StringUtil.EMPTY_STRING : exchange.toString();
+        String vhost = connection.getVhost();
+        exchangeService.addExchange(vhost, exchangeName, ExchangeType.value(AMQShortString.toString(type)), autoDelete, durable, internal, FieldTable.convertToMap(arguments));
         connection.writeFrame(connection.getRegistry().createExchangeDeclareOkBody().generateFrame(channelId));
     }
 
     @Override
     public void receiveExchangeDelete(AMQShortString exchange, boolean ifUnused, boolean nowait) {
+        String vhost = connection.getVhost();
+        Exchange cur = exchangeService.getExchange(vhost, AMQShortString.toString(exchange));
+        if (cur != null) {
+            exchangeService.deleteExchange(cur);
+            log.info("delete exchange {} success", exchange);
+        }
         connection.writeFrame(connection.getRegistry().createExchangeDeleteOkBody().generateFrame(channelId));
     }
 
@@ -65,7 +105,17 @@ public class AmqpChannel implements ServerChannelMethodProcessor {
 
     @Override
     public void receiveQueueDeclare(AMQShortString queue, boolean passive, boolean durable, boolean exclusive, boolean autoDelete, boolean nowait, FieldTable arguments) {
-        QueueDeclareOkBody responseBody = connection.getRegistry().createQueueDeclareOkBody(AMQShortString.createAMQShortString("name"), 1,1);
+        Queue q = queueService.addQueue(
+            connection.getVhost(),
+            AMQShortString.toString(queue),
+            exclusive,
+            durable,
+            autoDelete,
+            exclusive,
+            FieldTable.convertToMap(arguments)
+        );
+        log.info("queue declare success: {}", q);
+        QueueDeclareOkBody responseBody = connection.getRegistry().createQueueDeclareOkBody(AMQShortString.createAMQShortString(q.getName()), 0,0);
         connection.writeFrame(responseBody.generateFrame(channelId));
     }
 
