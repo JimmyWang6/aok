@@ -16,6 +16,13 @@
  */
 package com.aok.core;
 
+import com.aok.meta.Meta;
+import com.aok.meta.container.InMemoryMetaContainer;
+import com.aok.meta.container.MetaContainer;
+import com.aok.meta.service.BindingService;
+import com.aok.meta.service.ExchangeService;
+import com.aok.meta.service.QueueService;
+import com.aok.meta.service.VhostService;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -44,6 +51,13 @@ public class Broker {
         EventLoopGroup eventLoopGroupBoss = new NioEventLoopGroup(1, new ThreadFactoryImpl("NettyNIOBoss_"));
         EventLoopGroup eventLoopGroupSelector = new NioEventLoopGroup(3, new ThreadFactoryImpl("NettyServerNIOSelector_"));
         ServerBootstrap serverBootstrap = new ServerBootstrap();
+        MetaContainer metaContainer = new InMemoryMetaContainer();
+        VhostService vhostService = new VhostService(metaContainer);
+        QueueService queueService = new QueueService(metaContainer);
+        ExchangeService exchangeService = new ExchangeService(metaContainer);
+        BindingService bindingService = new BindingService(metaContainer);
+        // create default vhost
+        vhostService.addVhost("/");
         serverBootstrap.group(eventLoopGroupBoss, eventLoopGroupSelector)
             .channel(NioServerSocketChannel.class)
             .option(ChannelOption.SO_BACKLOG, 1024)
@@ -56,7 +70,7 @@ public class Broker {
                 protected void initChannel(SocketChannel socketChannel) {
                     final ChannelPipeline pipeline = socketChannel.pipeline();
                     pipeline.addLast("encoder", new AmqpEncoder());
-                    pipeline.addLast("handler", new AmqpConnection());
+                    pipeline.addLast("handler", new AmqpConnection(vhostService, exchangeService, queueService, bindingService));
                 }
             });
             try {

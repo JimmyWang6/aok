@@ -19,8 +19,8 @@ package com.aok.meta.service;
 import com.aok.meta.Queue;
 import com.aok.meta.container.MetaContainer;
 
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class QueueService {
     
@@ -30,9 +30,9 @@ public class QueueService {
         this.metaContainer = metaContainer;
     }
     
-    public void addQueue(String vhost, String name, Boolean exclusive, Boolean autoDelete, Boolean durable, Boolean internal, HashMap<String, String> arguments) {
+    public Queue addQueue(String vhost, String name, Boolean exclusive, Boolean autoDelete, Boolean durable, Boolean internal, Map<String, Object> arguments) {
         Queue queue = new Queue(vhost, name, exclusive, autoDelete, durable, internal, arguments);
-        metaContainer.add(queue);
+        return (Queue) metaContainer.add(queue);
     }
     
     public Queue deleteQueue(Queue queue) {

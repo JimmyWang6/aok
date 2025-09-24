@@ -21,17 +21,18 @@ import com.aok.meta.ExchangeType;
 import com.aok.meta.container.MetaContainer;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class ExchangeService {
 
     private final MetaContainer<Exchange> metaContainer;
 
-    ExchangeService(MetaContainer<Exchange> metaContainer) {
+    public ExchangeService(MetaContainer<Exchange> metaContainer) {
         this.metaContainer = metaContainer;
     }
 
-    public Exchange addExchange(String vhost, String name, ExchangeType exchangeType, Boolean autoDelete, Boolean internal, HashMap<String, Object> arguments) {
-        Exchange exchange = new Exchange(vhost, name, exchangeType, autoDelete, internal, arguments);
+    public Exchange addExchange(String vhost, String name, ExchangeType exchangeType, Boolean autoDelete, Boolean durable, Boolean internal, Map<String, Object> arguments) {
+        Exchange exchange = new Exchange(vhost, name, exchangeType, autoDelete, durable, internal, arguments);
         return (Exchange) metaContainer.add(exchange);
     }
 

@@ -25,7 +25,7 @@ public class VhostService {
 
     private final MetaContainer<Vhost> metaContainer;
 
-    VhostService(MetaContainer<Vhost> metaContainer) {
+    public VhostService(MetaContainer<Vhost> metaContainer) {
         this.metaContainer = metaContainer;
     }
 

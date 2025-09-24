@@ -31,6 +31,11 @@
             <artifactId>netty-all</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.aok</groupId>
+            <artifactId>meta</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.qpid</groupId>
             <artifactId>qpid-broker-core</artifactId>
         </dependency>

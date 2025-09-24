@@ -17,18 +17,21 @@
 package com.aok.meta;
 
 import lombok.Data;
+import lombok.ToString;
 
-import java.util.HashMap;
+import java.util.Map;
 
 @Data
 @MetaType("exchange")
+@ToString
 public class Exchange extends Meta {
 
-    public Exchange(String vhost, String name, ExchangeType type, Boolean autoDelete, Boolean internal, HashMap<String, Object> arguments) {
+    public Exchange(String vhost, String name, ExchangeType type, Boolean autoDelete, Boolean durable, Boolean internal, Map<String, Object> arguments) {
         setVhost(vhost);
         setName(name);
         this.type = type;
         this.autoDelete = autoDelete;
+        this.durable = durable;
         this.internal = internal;
         this.arguments = arguments;
     }
@@ -41,5 +44,5 @@ public class Exchange extends Meta {
 
     private boolean internal;
 
-    private HashMap<String, Object> arguments;
+    private Map<String, Object> arguments;
 }
