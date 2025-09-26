@@ -16,6 +16,18 @@ public class MetaKey {
         this.name = name;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public String getVhost() {
+        return vhost;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

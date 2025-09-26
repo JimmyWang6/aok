@@ -1,8 +1,6 @@
 package com.aok.meta.container;
 
-import com.aok.meta.Meta;
-import com.aok.meta.MetaKey;
-import com.aok.meta.MetaType;
+import com.aok.meta.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -24,7 +22,7 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
 
     private final KafkaConsumer<MetaKey, Meta> consumer;
 
-    private final KafkaAdminClient adminClient;
+    private final AdminClient adminClient;
 
     private final ConcurrentHashMap<MetaKey, Meta> cache = new ConcurrentHashMap<>();
 
@@ -32,7 +30,8 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
 
     public KafkaMetaContainer(String bootstrapServers) {
         try {
-            adminClient = (KafkaAdminClient) createAdminClient(bootstrapServers);
+            adminClient = createAdminClient(bootstrapServers);
+            producer = createProducer(bootstrapServers);
             consumer = createConsumer(bootstrapServers);
             ensureMetaTopicExists();
         } catch (ExecutionException | InterruptedException e) {
@@ -40,6 +39,15 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
             throw new RuntimeException(e);
         }
         startConsumerThread();
+    }
+
+    protected KafkaProducer<MetaKey, Meta> createProducer(String bootstrapServers) {
+        Properties producerProps = new Properties();
+        producerProps.put("bootstrap.servers", bootstrapServers);
+        producerProps.put("key.serializer", "com.aok.meta.serialization.MetaKeySerializer");
+        producerProps.put("value.serializer", "com.aok.meta.serialization.MetaSerializer");
+        producerProps.put("acks", "all");
+        return new KafkaProducer<>(producerProps);
     }
 
     private void startConsumerThread() {
@@ -59,7 +67,7 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
                                 log.debug("Tombstone message processed, removed key: {} from cache", record.key());
                                 return;
                             }
-                            if (meta.getUuid().equals(record.value().getUuid())) {
+                            if (meta != null && meta.getUuid().equals(record.value().getUuid())) {
                                 log.info("Duplicate meta detected, skipping update for key: {}", record.key());
                                 return;
                             }
@@ -82,12 +90,12 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         lock.lock();
         try {
             MetaKey key = new MetaKey(getMetaType(meta), meta.getVhost(), meta.getName());
-            cache.put(key, meta);
+//            cache.put(key, meta);
             persist(key, meta);
+            return meta;
         } finally {
             lock.unlock();
         }
-        return null;
     }
 
     @Override
@@ -95,14 +103,14 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         lock.lock();
         try {
             MetaKey key = new MetaKey(getMetaType(meta), meta.getVhost(), meta.getName());
-            cache.remove(key);
+//            cache.remove(key);
             // tombstone message.
             ProducerRecord<MetaKey, Meta> record = new ProducerRecord<>(META_TOPIC, key, null);
             persist(record);
+            return meta;
         } finally {
             lock.unlock();
         }
-        return null;
     }
 
     @Override
@@ -110,7 +118,8 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         lock.lock();
         try {
             MetaKey key = new MetaKey(getMetaType(meta), meta.getVhost(), meta.getName());
-            cache.put(key, meta);
+//            cache.put(key, meta);
+            persist(key, meta);
         } finally {
             lock.unlock();
         }
@@ -160,9 +169,6 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         }
     }
 
-    /**
-     * 创建 KafkaConsumer 实例
-     */
     protected KafkaConsumer<MetaKey, Meta> createConsumer(String bootstrapServers) {
         Properties consumerProps = new Properties();
         consumerProps.put("bootstrap.servers", bootstrapServers);
@@ -173,9 +179,6 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         return new KafkaConsumer<>(consumerProps);
     }
 
-    /**
-     * 从 META_TOPIC 最早 offset 开始消费
-     */
     protected void consumeFromEarliest() {
         if (consumer == null) {
             log.warn("Consumer is not initialized.");
@@ -196,11 +199,9 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         if (!set.contains(META_TOPIC)) {
             Map<String, String> topicConfig = new HashMap<>();
             topicConfig.put("cleanup.policy", "compact");
-            // roll segment every 10 seconds since compaction happens only at unactive segment
-            topicConfig.put("segment.ms", "10000");
-            // clean as often as possible
+            topicConfig.put("segment.ms", "60000");
             topicConfig.put("min.cleanable.dirty.ratio", "0.1");
-            NewTopic newTopic = new NewTopic(META_TOPIC, 1, (short) 2).configs(topicConfig);
+            NewTopic newTopic = new NewTopic(META_TOPIC, 1, (short) 1).configs(topicConfig);
             CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singleton(newTopic));
             createTopicsResult.all().get();
             log.info("Topic '{}' created as compact.", META_TOPIC);
@@ -208,5 +209,64 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
             log.info("Topic '{}' already exists and is compact.", META_TOPIC);
         }
         consumeFromEarliest();
+    }
+
+    public void close() {
+        try {
+            if (producer != null) producer.close();
+        } catch (Exception e) {
+            log.warn("Error closing producer", e);
+        }
+        try {
+            if (consumer != null) consumer.close();
+        } catch (Exception e) {
+            log.warn("Error closing consumer", e);
+        }
+        try {
+            if (adminClient != null) adminClient.close();
+        } catch (Exception e) {
+            log.warn("Error closing adminClient", e);
+        }
+    }
+
+    public static void main(String[] args) {
+        // 请根据实际 Kafka 地址修改
+        String bootstrapServers = "localhost:9092";
+        KafkaMetaContainer container = new KafkaMetaContainer(bootstrapServers);
+        try {
+            Exchange exchange = new Exchange("testVhost", "testName", ExchangeType.Direct, true, true, true, null);
+            exchange.setUuid(UUID.randomUUID());
+
+            // 添加 Exchange
+            System.out.println("Add: " + container.add(exchange));
+            Thread.sleep(2000);
+            List<Exchange> exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
+            System.out.println("List: " + exchanges);
+
+            // 更新 Exchange
+            exchange.setName("testNameUpdated");
+            container.update(exchange);
+            Thread.sleep(2000);
+            exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
+            System.out.println("List: " + exchanges);
+
+            // 获取 Exchange
+            Exchange fetched = (Exchange) container.get(exchange.getClass(), exchange.getVhost(), exchange.getName());
+            System.out.println("Get: " + fetched);
+            Thread.sleep(2000);
+            exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
+            System.out.println("List: " + exchanges);
+
+
+            // 删除 Exchange
+            System.out.println("Delete: " + container.delete(exchange));
+            Thread.sleep(2000);
+            exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
+            System.out.println("List: " + exchanges);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            container.close();
+        }
     }
 }
