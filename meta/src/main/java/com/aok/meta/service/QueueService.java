@@ -31,7 +31,7 @@ public class QueueService {
     }
     
     public Queue addQueue(String vhost, String name, Boolean exclusive, Boolean autoDelete, Boolean durable, Map<String, Object> arguments) {
-        Queue queue = new Queue(vhost, name, exclusive, autoDelete, durable, internal, arguments);
+        Queue queue = new Queue(vhost, name, exclusive, autoDelete, durable, arguments);
         return (Queue) metaContainer.add(queue);
     }
     

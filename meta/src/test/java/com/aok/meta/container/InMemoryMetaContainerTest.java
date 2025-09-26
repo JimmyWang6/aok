@@ -21,8 +21,8 @@ class InMemoryMetaContainerTest {
         String vhost1 = "testVhost";
         String nameQ1 = "testName";
         String nameQ2 = "testName2";
-        Queue q1 = new Queue(vhost1, nameQ1, false, false, true, false, null);
-        Queue q2 = new Queue(vhost1, nameQ2, false, false, true, false, null);
+        Queue q1 = new Queue(vhost1, nameQ1, false, false, true, null);
+        Queue q2 = new Queue(vhost1, nameQ2, false, false, true, null);
         inMemoryMetaContainer.add(q1);
         inMemoryMetaContainer.add(q2);
         Queue getQueue1 = (Queue) inMemoryMetaContainer.get(Queue.class, vhost1, nameQ1);

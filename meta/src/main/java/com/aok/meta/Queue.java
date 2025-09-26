@@ -25,7 +25,7 @@ import java.util.Map;
 @MetaType("queue")
 public class Queue extends Meta {
     
-    public Queue(String vhost, String name, Boolean exclusive, Boolean autoDelete, Boolean durable, Boolean internal, Map<String, Object> arguments) {
+    public Queue(String vhost, String name, Boolean exclusive, Boolean autoDelete, Boolean durable, Map<String, Object> arguments) {
         this.setVhost(vhost);
         this.setName(name);
         this.exclusive = exclusive;
