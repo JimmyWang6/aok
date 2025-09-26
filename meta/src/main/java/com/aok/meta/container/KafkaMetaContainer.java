@@ -42,9 +42,6 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         startConsumerThread();
     }
 
-    /**
-     * 启动单线程持续消费 META_TOPIC
-     */
     private void startConsumerThread() {
         Thread consumerThread = new Thread(() -> {
             consumer.subscribe(List.of(META_TOPIC));
@@ -197,12 +194,18 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         ListTopicsResult listTopics = adminClient.listTopics(new ListTopicsOptions());
         Set<String> set = listTopics.listings().get().stream().map(TopicListing::name).collect(Collectors.toSet());
         if (!set.contains(META_TOPIC)) {
-            NewTopic newTopic = new NewTopic(META_TOPIC, 3, (short) 2);
+            Map<String, String> topicConfig = new HashMap<>();
+            topicConfig.put("cleanup.policy", "compact");
+            // roll segment every 10 seconds since compaction happens only at unactive segment
+            topicConfig.put("segment.ms", "10000");
+            // clean as often as possible
+            topicConfig.put("min.cleanable.dirty.ratio", "0.1");
+            NewTopic newTopic = new NewTopic(META_TOPIC, 1, (short) 2).configs(topicConfig);
             CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singleton(newTopic));
             createTopicsResult.all().get();
-            log.info("Topic '{}' created.", META_TOPIC);
+            log.info("Topic '{}' created as compact.", META_TOPIC);
         } else {
-            log.info("Topic '{}' already exists.", META_TOPIC);
+            log.info("Topic '{}' already exists and is compact.", META_TOPIC);
         }
         consumeFromEarliest();
     }
