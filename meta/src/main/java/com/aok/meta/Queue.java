@@ -31,7 +31,6 @@ public class Queue extends Meta {
         this.exclusive = exclusive;
         this.autoDelete = autoDelete;
         this.durable = durable;
-        this.internal = internal;
         this.arguments = arguments;
     }
     
@@ -40,8 +39,6 @@ public class Queue extends Meta {
     private Boolean exclusive;
     
     private Boolean autoDelete;
-    
-    private Boolean internal;
     
     private Map<String, Object> arguments;
 }

@@ -109,9 +109,8 @@ public class AmqpChannel implements ServerChannelMethodProcessor {
             connection.getVhost(),
             AMQShortString.toString(queue),
             exclusive,
-            durable,
             autoDelete,
-            exclusive,
+            durable,
             FieldTable.convertToMap(arguments)
         );
         log.info("queue declare success: {}", q);
