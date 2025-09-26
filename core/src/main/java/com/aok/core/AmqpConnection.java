@@ -16,7 +16,7 @@
  */
 package com.aok.core;
 
-import com.aok.core.storage.IStorage;
+import com.aok.core.storage.ProduceService;
 import com.aok.meta.service.BindingService;
 import com.aok.meta.service.ExchangeService;
 import com.aok.meta.service.QueueService;
@@ -64,7 +64,7 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
     
     private AmqpChannel amqpChannel;
 
-    private final IStorage storage;
+    private final ProduceService storage;
     
     private final ConcurrentHashMap<Integer, AmqpChannel> channels = new ConcurrentHashMap<>();
 
@@ -75,12 +75,12 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
 
     private volatile int currentMethodId;
 
-    AmqpConnection(VhostService vhostService, ExchangeService exchangeService, QueueService queueService, BindingService bindingService, IStorage storage) {
+    AmqpConnection(VhostService vhostService, ExchangeService exchangeService, QueueService queueService, BindingService bindingService, ProduceService produceService) {
         this.vhostService = vhostService;
         this.exchangeService = exchangeService;
         this.queueService = queueService;
         this.bindingService = bindingService;
-        this.storage = storage;
+        this.storage = produceService;
     }
 
     @Getter
