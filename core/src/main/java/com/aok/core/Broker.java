@@ -16,6 +16,9 @@
  */
 package com.aok.core;
 
+import com.aok.core.storage.IStorage;
+import com.aok.core.storage.KafkaMessageStorage;
+import com.aok.core.storage.ProducerPool;
 import com.aok.meta.Meta;
 import com.aok.meta.container.InMemoryMetaContainer;
 import com.aok.meta.container.MetaContainer;
@@ -51,6 +54,7 @@ public class Broker {
         EventLoopGroup eventLoopGroupBoss = new NioEventLoopGroup(1, new ThreadFactoryImpl("NettyNIOBoss_"));
         EventLoopGroup eventLoopGroupSelector = new NioEventLoopGroup(3, new ThreadFactoryImpl("NettyServerNIOSelector_"));
         ServerBootstrap serverBootstrap = new ServerBootstrap();
+        IStorage storage = new KafkaMessageStorage(new ProducerPool());
         MetaContainer metaContainer = new InMemoryMetaContainer();
         VhostService vhostService = new VhostService(metaContainer);
         QueueService queueService = new QueueService(metaContainer);
@@ -70,7 +74,7 @@ public class Broker {
                 protected void initChannel(SocketChannel socketChannel) {
                     final ChannelPipeline pipeline = socketChannel.pipeline();
                     pipeline.addLast("encoder", new AmqpEncoder());
-                    pipeline.addLast("handler", new AmqpConnection(vhostService, exchangeService, queueService, bindingService));
+                    pipeline.addLast("handler", new AmqpConnection(vhostService, exchangeService, queueService, bindingService, storage));
                 }
             });
             try {

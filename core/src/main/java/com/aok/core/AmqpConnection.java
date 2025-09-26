@@ -16,6 +16,7 @@
  */
 package com.aok.core;
 
+import com.aok.core.storage.IStorage;
 import com.aok.meta.service.BindingService;
 import com.aok.meta.service.ExchangeService;
 import com.aok.meta.service.QueueService;
@@ -48,10 +49,10 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 @Slf4j
 public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodProcessor<ServerChannelMethodProcessor> {
 
-    private final VhostService vhostService;
-
     @Getter
     private String vhost;
+
+    private final VhostService vhostService;
 
     private final ExchangeService exchangeService;
 
@@ -62,6 +63,8 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
     private AmqpBrokerDecoder brokerDecoder;
     
     private AmqpChannel amqpChannel;
+
+    private final IStorage storage;
     
     private final ConcurrentHashMap<Integer, AmqpChannel> channels = new ConcurrentHashMap<>();
 
@@ -72,11 +75,12 @@ public class AmqpConnection extends AmqpCommandDecoder implements ServerMethodPr
 
     private volatile int currentMethodId;
 
-    AmqpConnection(VhostService vhostService, ExchangeService exchangeService, QueueService queueService, BindingService bindingService) {
+    AmqpConnection(VhostService vhostService, ExchangeService exchangeService, QueueService queueService, BindingService bindingService, IStorage storage) {
         this.vhostService = vhostService;
         this.exchangeService = exchangeService;
         this.queueService = queueService;
         this.bindingService = bindingService;
+        this.storage = storage;
     }
 
     @Getter

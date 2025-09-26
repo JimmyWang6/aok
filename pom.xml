@@ -45,6 +45,7 @@
     <name>AMQP Protocol on Kafka Queues</name>
     <description>AMQP Protocol on Kafka Queues</description>
     <properties>
+        <jackson.version>2.17.0</jackson.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <lombok.version>1.18.32</lombok.version>
@@ -54,9 +55,21 @@
         <log4j.version>2.23.1</log4j.version>
         <slf4j.version>2.0.13</slf4j.version>
         <junit.platform.version>1.13.1</junit.platform.version>
+        <kafka.client.version>4.1.0</kafka.client.version>
+        <common.pool.version>2.12.0</common.pool.version>
     </properties>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-pool2</artifactId>
+                <version>${common.pool.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-launcher</artifactId>
@@ -72,7 +85,7 @@
             <dependency>
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka-clients</artifactId>
-                <version>4.1.0</version>
+                <version>${kafka.client.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
