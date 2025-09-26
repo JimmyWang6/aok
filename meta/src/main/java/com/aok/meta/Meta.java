@@ -19,11 +19,12 @@ package com.aok.meta;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 @Data
 public class Meta implements Serializable {
-    
-    //TODO add uuid scope
+
+    private UUID uuid;
 
     private String vhost;
     

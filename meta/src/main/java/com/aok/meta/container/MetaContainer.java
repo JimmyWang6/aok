@@ -23,21 +23,21 @@ import java.util.List;
 
 /**
  * Container interface for managing Meta objects.
- * @param <T> the type of Meta
+ * @param <Meta> the type of Meta
  */
-public interface MetaContainer<T extends Meta> {
+public interface MetaContainer<Meta> {
 
     /**
      * Adds a Meta object to the container.
      * @param meta the Meta object to add
      */
-    Meta add(T meta);
+    Meta add(Meta meta);
 
     /**
      * Removes a Meta object from the container.
      * @param meta the Meta object to remove
      */
-    Meta delete(T meta);
+    Meta delete(Meta meta);
 
     /**
      * Retrieves a Meta object by type, vhost, and name.
@@ -52,7 +52,7 @@ public interface MetaContainer<T extends Meta> {
      * Lists all Meta objects in the container.
      * @return a list of Meta objects
      */
-    List<T> list(Class<?> classType);
+    List<Meta> list(Class<?> classType);
     
     /**
      * Gets the count of Meta objects of a specific type in the container.
@@ -65,7 +65,7 @@ public interface MetaContainer<T extends Meta> {
      * Updates a Meta object in the container.
      * @param meta the Meta object to update
      */
-    void update(T meta);
+    void update(Meta meta);
 
     /**
      * Gets the MetaType value from the Meta object's annotation.
