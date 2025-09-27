@@ -16,13 +16,19 @@
  */
 package com.aok.meta;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Data
-@MetaType("queue")
+@JsonTypeName("queue")
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Queue extends Meta {
     
     public Queue(String vhost, String name, Boolean exclusive, Boolean autoDelete, Boolean durable, Map<String, Object> arguments) {
@@ -41,4 +47,8 @@ public class Queue extends Meta {
     private Boolean autoDelete;
     
     private Map<String, Object> arguments;
+
+    public String getMetaType() {
+        return "queue";
+    }
 }

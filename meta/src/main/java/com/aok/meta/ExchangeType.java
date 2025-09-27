@@ -16,6 +16,9 @@
  */
 package com.aok.meta;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 public enum ExchangeType {
 
     Direct("direct"),
@@ -31,6 +34,7 @@ public enum ExchangeType {
         this.value = value;
     }
 
+    @JsonCreator
     public static ExchangeType value(String type) {
         if (type == null || type.isEmpty()) {
             throw new IllegalArgumentException("Illegal Exchange Type");
@@ -54,6 +58,7 @@ public enum ExchangeType {
         }
     }
 
+    @JsonValue
     public String getValue() {
         return value;
     }

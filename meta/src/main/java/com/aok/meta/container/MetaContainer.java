@@ -16,9 +16,6 @@
  */
 package com.aok.meta.container;
 
-import com.aok.meta.Meta;
-import com.aok.meta.MetaType;
-
 import java.util.List;
 
 /**
@@ -66,17 +63,4 @@ public interface MetaContainer<Meta> {
      * @param meta the Meta object to update
      */
     void update(Meta meta);
-
-    /**
-     * Gets the MetaType value from the Meta object's annotation.
-     * @param meta the Meta object
-     * @return the MetaType value
-     */
-    default String getMetaType(Meta meta) {
-        MetaType type = meta.getClass().getAnnotation(MetaType.class);
-        if (type == null) {
-            throw new IllegalArgumentException("Meta class must be annotated with @MetaType");
-        }
-        return type.value();
-    }
 }

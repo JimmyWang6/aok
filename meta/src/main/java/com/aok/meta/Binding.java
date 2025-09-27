@@ -16,21 +16,25 @@
  */
 package com.aok.meta;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @MetaType("binding")
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Binding extends Meta {
-
-    public Binding(String source, String destination, String routingKey) {
-        this.source = source;
-        this.destination = destination;
-        this.routingKey = routingKey;
-    }
 
     private String source;
 
     private String destination;
 
     private String routingKey;
+
+    public String getMetaType() {
+        return "binding";
+    }
 }

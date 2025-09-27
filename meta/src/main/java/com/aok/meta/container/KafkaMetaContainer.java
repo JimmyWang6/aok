@@ -1,13 +1,42 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.aok.meta.container;
 
-import com.aok.meta.*;
+import com.aok.meta.Meta;
+import com.aok.meta.MetaKey;
+import com.aok.meta.MetaType;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.ListTopicsOptions;
+import org.apache.kafka.clients.admin.ListTopicsResult;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.TopicListing;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReentrantLock;
@@ -16,11 +45,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class KafkaMetaContainer implements MetaContainer<Meta> {
 
-    private static final String META_TOPIC = "meta";
+    private volatile boolean running = true;
+
+    private static final String META_TOPIC = "meta-topic";
 
     private KafkaProducer<MetaKey, Meta> producer;
 
-    private final KafkaConsumer<MetaKey, Meta> consumer;
+    private KafkaConsumer<MetaKey, Meta> consumer;
 
     private final AdminClient adminClient;
 
@@ -32,13 +63,12 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         try {
             adminClient = createAdminClient(bootstrapServers);
             producer = createProducer(bootstrapServers);
-            consumer = createConsumer(bootstrapServers);
             ensureMetaTopicExists();
         } catch (ExecutionException | InterruptedException e) {
             log.error("Failed to subscribe to meta topic", e);
             throw new RuntimeException(e);
         }
-        startConsumerThread();
+        startConsumerThread(bootstrapServers);
     }
 
     protected KafkaProducer<MetaKey, Meta> createProducer(String bootstrapServers) {
@@ -46,14 +76,15 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         producerProps.put("bootstrap.servers", bootstrapServers);
         producerProps.put("key.serializer", "com.aok.meta.serialization.MetaKeySerializer");
         producerProps.put("value.serializer", "com.aok.meta.serialization.MetaSerializer");
-        producerProps.put("acks", "all");
+        producerProps.put("acks", "1");
         return new KafkaProducer<>(producerProps);
     }
 
-    private void startConsumerThread() {
+    private void startConsumerThread(String bootstrapServers) {
         Thread consumerThread = new Thread(() -> {
-            consumer.subscribe(List.of(META_TOPIC));
-            while (true) {
+            consumer = createConsumer(bootstrapServers);
+            consumeFromEarliest();
+            while (running) {
                 try {
                     var records = consumer.poll(java.time.Duration.ofMillis(500));
                     records.forEach(record -> {
@@ -67,15 +98,19 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
                                 log.debug("Tombstone message processed, removed key: {} from cache", record.key());
                                 return;
                             }
-                            if (meta != null && meta.getUuid().equals(record.value().getUuid())) {
-                                log.info("Duplicate meta detected, skipping update for key: {}", record.key());
+                            if (meta != null && record.offset() <= meta.getOffset()) {
+                                log.debug("Duplicate meta detected, skipping update for key: {}", record.key());
                                 return;
                             }
-                            cache.put(record.key(), record.value());
+                            Meta cur = record.value();
+                            cur.setOffset(record.offset());
+                            MetaKey key = new MetaKey(cur.getMetaType(), cur.getVhost(), cur.getName());
+                            cache.put(key, cur);
                         } finally {
                             lock.unlock();
                         }
                     });
+                    consumer.commitAsync();
                 } catch (Exception e) {
                     log.error("Error during poll", e);
                 }
@@ -89,9 +124,10 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
     public Meta add(Meta meta) {
         lock.lock();
         try {
-            MetaKey key = new MetaKey(getMetaType(meta), meta.getVhost(), meta.getName());
-//            cache.put(key, meta);
-            persist(key, meta);
+            MetaKey key = new MetaKey(meta.getMetaType(), meta.getVhost(), meta.getName());
+            RecordMetadata record = persist(key, meta);
+            meta.setOffset(record.offset());
+            cache.put(key, meta);
             return meta;
         } finally {
             lock.unlock();
@@ -102,11 +138,11 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
     public Meta delete(Meta meta) {
         lock.lock();
         try {
-            MetaKey key = new MetaKey(getMetaType(meta), meta.getVhost(), meta.getName());
-//            cache.remove(key);
+            MetaKey key = new MetaKey(meta.getMetaType(), meta.getVhost(), meta.getName());
             // tombstone message.
             ProducerRecord<MetaKey, Meta> record = new ProducerRecord<>(META_TOPIC, key, null);
             persist(record);
+            cache.remove(key);
             return meta;
         } finally {
             lock.unlock();
@@ -117,9 +153,10 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
     public void update(Meta meta) {
         lock.lock();
         try {
-            MetaKey key = new MetaKey(getMetaType(meta), meta.getVhost(), meta.getName());
-//            cache.put(key, meta);
-            persist(key, meta);
+            MetaKey key = new MetaKey(meta.getMetaType(), meta.getVhost(), meta.getName());
+            RecordMetadata record = persist(key, meta);
+            meta.setOffset(record.offset());
+            cache.put(key, meta);
         } finally {
             lock.unlock();
         }
@@ -152,12 +189,15 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         return AdminClient.create(props);
     }
 
-    public void persist(MetaKey metaKey, Meta meta) {
+    public RecordMetadata persist(MetaKey metaKey, Meta meta) {
         ProducerRecord<MetaKey, Meta> producerRecord = new ProducerRecord<>(META_TOPIC, metaKey, meta);
         try {
-            producer.send(producerRecord).get();
+            RecordMetadata recordMetadata = producer.send(producerRecord).get();
+            log.debug("Persisted meta. key={}, meta={}, offset={}", metaKey, meta, recordMetadata.offset());
+            return recordMetadata;
         } catch (Exception e) {
             log.error("Failed to persist meta. key={}, meta={}, error={}", metaKey, meta, e.getMessage(), e);
+            return null;
         }
     }
 
@@ -208,19 +248,14 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         } else {
             log.info("Topic '{}' already exists and is compact.", META_TOPIC);
         }
-        consumeFromEarliest();
     }
 
     public void close() {
+        running = false;
         try {
             if (producer != null) producer.close();
         } catch (Exception e) {
             log.warn("Error closing producer", e);
-        }
-        try {
-            if (consumer != null) consumer.close();
-        } catch (Exception e) {
-            log.warn("Error closing consumer", e);
         }
         try {
             if (adminClient != null) adminClient.close();
@@ -229,44 +264,9 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         }
     }
 
-    public static void main(String[] args) {
-        // 请根据实际 Kafka 地址修改
-        String bootstrapServers = "localhost:9092";
-        KafkaMetaContainer container = new KafkaMetaContainer(bootstrapServers);
-        try {
-            Exchange exchange = new Exchange("testVhost", "testName", ExchangeType.Direct, true, true, true, null);
-            exchange.setUuid(UUID.randomUUID());
-
-            // 添加 Exchange
-            System.out.println("Add: " + container.add(exchange));
-            Thread.sleep(2000);
-            List<Exchange> exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
-            System.out.println("List: " + exchanges);
-
-            // 更新 Exchange
-            exchange.setName("testNameUpdated");
-            container.update(exchange);
-            Thread.sleep(2000);
-            exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
-            System.out.println("List: " + exchanges);
-
-            // 获取 Exchange
-            Exchange fetched = (Exchange) container.get(exchange.getClass(), exchange.getVhost(), exchange.getName());
-            System.out.println("Get: " + fetched);
-            Thread.sleep(2000);
-            exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
-            System.out.println("List: " + exchanges);
-
-
-            // 删除 Exchange
-            System.out.println("Delete: " + container.delete(exchange));
-            Thread.sleep(2000);
-            exchanges = (List<Exchange>) (List<?>) container.list(exchange.getClass());
-            System.out.println("List: " + exchanges);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } finally {
-            container.close();
-        }
+    public String print() {
+        StringBuilder sb = new StringBuilder();
+        cache.values().forEach(meta -> sb.append(meta.toString()).append(System.lineSeparator()));
+        return sb.toString();
     }
 }

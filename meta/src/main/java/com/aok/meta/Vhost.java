@@ -16,13 +16,22 @@
  */
 package com.aok.meta;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-@MetaType("vhost")
+@JsonTypeName("vhost")
+@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Vhost extends Meta {
     public Vhost(String name) {
         this.setVhost(name);
         this.setName(name);
+    }
+
+    public String getMetaType() {
+        return "vhost";
     }
 }

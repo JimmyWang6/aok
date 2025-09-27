@@ -16,14 +16,19 @@
  */
 package com.aok.meta;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.ToString;
+import lombok.NoArgsConstructor;
 
 import java.util.Map;
 
 @Data
-@MetaType("exchange")
-@ToString
+@JsonTypeName("exchange")
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Exchange extends Meta {
 
     public Exchange(String vhost, String name, ExchangeType type, Boolean autoDelete, Boolean durable, Boolean internal, Map<String, Object> arguments) {
@@ -45,4 +50,22 @@ public class Exchange extends Meta {
     private boolean internal;
 
     private Map<String, Object> arguments;
+
+    @Override
+    public String toString() {
+        return "Exchange{" +
+                "type=" + type +
+                ", durable=" + durable +
+                ", autoDelete=" + autoDelete +
+                ", internal=" + internal +
+                ", arguments=" + arguments +
+                ", vhost='" + getVhost() + '\'' +
+                ", name='" + getName() + '\'' +
+                ", offset=" + getOffset() +
+                '}';
+    }
+
+    public String getMetaType() {
+        return "exchange";
+    }
 }

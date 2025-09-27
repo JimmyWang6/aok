@@ -16,17 +16,32 @@
  */
 package com.aok.meta;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.UUID;
 
 @Data
-public class Meta implements Serializable {
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+@JsonSubTypes({@JsonSubTypes.Type(value = Exchange.class, name = "exchange"),
+        @JsonSubTypes.Type(value = Queue.class, name = "queue"),
+        @JsonSubTypes.Type(value = Binding.class, name = "binding"),
+        @JsonSubTypes.Type(value = Vhost.class, name = "vhost")})
+public abstract class Meta implements Serializable {
 
-    private UUID uuid;
+    private long offset;
 
     private String vhost;
-    
+
     private String name;
+
+    public String getMetaType() {
+        JsonTypeName type = getClass().getAnnotation(JsonTypeName.class);
+        if (type == null) {
+            throw new IllegalArgumentException("Meta class must be annotated with @MetaType");
+        }
+        return type.value();
+    }
 }

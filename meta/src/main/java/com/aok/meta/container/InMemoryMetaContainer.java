@@ -18,7 +18,7 @@ package com.aok.meta.container;
 
 import com.aok.meta.Meta;
 import com.aok.meta.MetaKey;
-import com.aok.meta.MetaType;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 
 import java.util.List;
 import java.util.Map;
@@ -30,20 +30,20 @@ public class InMemoryMetaContainer implements MetaContainer<Meta> {
 
     @Override
     public synchronized Meta add(Meta meta) {
-        String type = getMetaType(meta);
+        String type = meta.getMetaType();
         MetaKey key = new MetaKey(type, meta.getVhost(), meta.getName());
         return map.put(key, meta);
     }
 
     @Override
     public synchronized Meta delete(Meta meta) {
-        String type = getMetaType(meta);
+        String type = meta.getMetaType();
         MetaKey key = new MetaKey(type, meta.getVhost(), meta.getName());
         return map.remove(key);
     }
 
     public Meta get(Class<?> classType, String vhost, String name) {
-        MetaType type = classType.getAnnotation(MetaType.class);
+        JsonTypeName type = classType.getAnnotation(JsonTypeName.class);
         if (type == null) {
             return null;
         }
@@ -53,11 +53,11 @@ public class InMemoryMetaContainer implements MetaContainer<Meta> {
 
     @Override
     public List<Meta> list(Class<?> classType) {
-        MetaType type = classType.getAnnotation(MetaType.class);
+        JsonTypeName type = classType.getAnnotation(JsonTypeName.class);
         if (type == null) {
             return List.of();
         }
-        return map.values().stream().filter(meta -> getMetaType(meta).equals(type.value())).toList();
+        return map.values().stream().filter(meta -> meta.getMetaType().equals(type.value())).toList();
     }
     
     @Override
@@ -67,7 +67,7 @@ public class InMemoryMetaContainer implements MetaContainer<Meta> {
 
     @Override
     public synchronized void update(Meta meta) {
-        String type = getMetaType(meta);
+        String type = meta.getMetaType();
         MetaKey key = new MetaKey(type, meta.getVhost(), meta.getName());
         map.put(key, meta);
     }
