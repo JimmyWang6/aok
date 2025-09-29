@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./doc/images/icons/AOK-logo.png" alt="logo" />
+</p>
+
 # AMQP Protocol on Kafka Queues
 [![Apache License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
