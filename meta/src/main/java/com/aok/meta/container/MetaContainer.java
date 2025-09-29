@@ -50,6 +50,10 @@ public interface MetaContainer<Meta> {
      * @return a list of Meta objects
      */
     List<Meta> list(Class<?> classType);
+
+    default void start() {
+        // Default no-op implementation
+    }
     
     /**
      * Gets the count of Meta objects of a specific type in the container.

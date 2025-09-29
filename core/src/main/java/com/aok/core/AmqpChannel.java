@@ -18,6 +18,7 @@
  */
 package com.aok.core;
 
+import com.aok.meta.Binding;
 import com.aok.meta.Exchange;
 import com.aok.meta.ExchangeType;
 import com.aok.meta.Queue;
