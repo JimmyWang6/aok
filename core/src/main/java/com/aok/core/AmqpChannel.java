@@ -130,6 +130,12 @@ public class AmqpChannel implements ServerChannelMethodProcessor {
 
     @Override
     public void receiveQueueDelete(AMQShortString queue, boolean ifUnused, boolean ifEmpty, boolean nowait) {
+        String vhost = connection.getVhost();
+        Queue cur = queueService.getQueue(vhost, AMQShortString.toString(queue));
+        if (cur != null) {
+            queueService.deleteQueue(cur);
+            log.info("delete queue {} success", queue);
+        }
         connection.writeFrame(connection.getRegistry().createQueueDeleteOkBody(0).generateFrame(channelId));
     }
 
