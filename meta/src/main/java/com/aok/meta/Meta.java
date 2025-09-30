@@ -28,7 +28,8 @@ import java.io.Serializable;
 @JsonSubTypes({@JsonSubTypes.Type(value = Exchange.class, name = "exchange"),
         @JsonSubTypes.Type(value = Queue.class, name = "queue"),
         @JsonSubTypes.Type(value = Binding.class, name = "binding"),
-        @JsonSubTypes.Type(value = Vhost.class, name = "vhost")})
+        @JsonSubTypes.Type(value = Vhost.class, name = "vhost"),
+        @JsonSubTypes.Type(value = Dummy.class, name = "dummy")})
 public abstract class Meta implements Serializable {
 
     private long offset;

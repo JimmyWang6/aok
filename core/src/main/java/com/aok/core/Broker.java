@@ -16,11 +16,12 @@
  */
 package com.aok.core;
 
+import com.aok.core.config.AmqpConfig;
 import com.aok.core.storage.IStorage;
 import com.aok.core.storage.KafkaMessageStorage;
 import com.aok.core.storage.ProduceService;
 import com.aok.core.storage.ProducerPool;
-import com.aok.meta.container.InMemoryMetaContainer;
+import com.aok.meta.container.KafkaMetaContainer;
 import com.aok.meta.container.MetaContainer;
 import com.aok.meta.service.BindingService;
 import com.aok.meta.service.ExchangeService;
@@ -34,15 +35,20 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
 @Slf4j
 public class Broker {
 
-    public static final int DEFAULT_BIND_PORT = 5674;
+    private AmqpConfig amqpConfig;
 
     private final CountDownLatch shutdownLatch = new CountDownLatch(1);
 
@@ -50,13 +56,37 @@ public class Broker {
         shutdownLatch.await();
     }
     
-    public void startUp() {
+    public void startUp(String []args) throws IOException {
+        OptionParser optionParser = new OptionParser();
+        ConfigLoader loader = new ConfigLoader();
+        if (args.length < 1) {
+            CommandLineUtils.printUsageAndExit(optionParser, "No configuration file specified");
+        }
+        Properties properties = loader.load(args[0]);
+        this.amqpConfig = AmqpConfig.fromProperties(properties);
+        if (args.length > 1) {
+            OptionSet options = optionParser.parse(args);
+            optionParser.parse(Arrays.copyOfRange(args, 1, args.length));
+            if (!options.nonOptionArguments().isEmpty()) {
+                String nonArgs = options.nonOptionArguments().stream()
+                    .map(Object::toString)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
+                CommandLineUtils.printUsageAndExit(optionParser, "Found non argument parameters: " + nonArgs);
+            }
+            //TODO override properties with command line args
+        }
+        start();
+    }
+
+    private void start() {
         EventLoopGroup eventLoopGroupBoss = new NioEventLoopGroup(1, new ThreadFactoryImpl("NettyNIOBoss_"));
         EventLoopGroup eventLoopGroupSelector = new NioEventLoopGroup(3, new ThreadFactoryImpl("NettyServerNIOSelector_"));
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         IStorage storage = new KafkaMessageStorage(new ProducerPool());
         ProduceService produceService = new ProduceService(storage);
-        MetaContainer metaContainer = new InMemoryMetaContainer();
+        MetaContainer metaContainer = new KafkaMetaContainer(this.amqpConfig.getKafkaBootstrapServers());
+        metaContainer.start();
         VhostService vhostService = new VhostService(metaContainer);
         QueueService queueService = new QueueService(metaContainer);
         ExchangeService exchangeService = new ExchangeService(metaContainer);
@@ -69,7 +99,7 @@ public class Broker {
             .option(ChannelOption.SO_REUSEADDR, true)
             .childOption(ChannelOption.SO_KEEPALIVE, false)
             .childOption(ChannelOption.TCP_NODELAY, true)
-            .localAddress(new InetSocketAddress("localhost", DEFAULT_BIND_PORT))
+            .localAddress(new InetSocketAddress(amqpConfig.getServerHost(), amqpConfig.getServerPort()))
             .childHandler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 protected void initChannel(SocketChannel socketChannel) {
@@ -78,18 +108,18 @@ public class Broker {
                     pipeline.addLast("handler", new AmqpConnection(vhostService, exchangeService, queueService, bindingService, produceService));
                 }
             });
-            try {
-                serverBootstrap.bind(DEFAULT_BIND_PORT).sync();
-            } catch (Exception e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
-            log.info("Broker start up success, listening on port {}", DEFAULT_BIND_PORT);
+        try {
+            serverBootstrap.bind().sync();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        log.info("Broker start up success, listening on port {}", amqpConfig.getServerPort());
     }
-    
-    public static void main(String[] args) throws InterruptedException {
+
+    public static void main(String[] args) throws InterruptedException, IOException {
         Broker broker = new Broker();
-        broker.startUp();
+        broker.startUp(args);
         broker.awaitShutdown();
     }
 }

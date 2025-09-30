@@ -16,6 +16,7 @@
  */
 package com.aok.meta.container;
 
+import com.aok.meta.Dummy;
 import com.aok.meta.Meta;
 import com.aok.meta.MetaKey;
 import com.aok.meta.MetaType;
@@ -38,13 +39,18 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class KafkaMetaContainer implements MetaContainer<Meta> {
 
+    public static final String DUMMY = "dummy";
+    public static final int TIMEOUT = 30;
     private volatile boolean running = true;
 
     private static final String META_TOPIC = "meta-topic";
@@ -53,22 +59,36 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
 
     private KafkaConsumer<MetaKey, Meta> consumer;
 
-    private final AdminClient adminClient;
+    private volatile long latestOffset = -1;
+
+    private final CountDownLatch latch = new CountDownLatch(1);
+
+    private final String bootstrapServers;
+
+    private AdminClient adminClient;
 
     private final ConcurrentHashMap<MetaKey, Meta> cache = new ConcurrentHashMap<>();
 
     private final ReentrantLock lock = new ReentrantLock();
 
     public KafkaMetaContainer(String bootstrapServers) {
+        this.bootstrapServers = bootstrapServers;
+    }
+
+    /**
+     * Produce a dummy message to get the latest offset.
+     *
+     */
+    protected long getLatestOffset() {
+        MetaKey metaKey = new MetaKey(DUMMY, DUMMY, DUMMY);
+        Meta dummy = new Dummy();
+        ProducerRecord<MetaKey, Meta> producerRecord = new ProducerRecord<>(META_TOPIC, metaKey, dummy);
         try {
-            adminClient = createAdminClient(bootstrapServers);
-            producer = createProducer(bootstrapServers);
-            ensureMetaTopicExists();
-        } catch (ExecutionException | InterruptedException e) {
-            log.error("Failed to subscribe to meta topic", e);
+            RecordMetadata metadata = producer.send(producerRecord).get(10, TimeUnit.SECONDS);
+            return metadata.offset();
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
             throw new RuntimeException(e);
         }
-        startConsumerThread(bootstrapServers);
     }
 
     protected KafkaProducer<MetaKey, Meta> createProducer(String bootstrapServers) {
@@ -77,6 +97,7 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
         producerProps.put("key.serializer", "com.aok.meta.serialization.MetaKeySerializer");
         producerProps.put("value.serializer", "com.aok.meta.serialization.MetaSerializer");
         producerProps.put("acks", "1");
+        producerProps.put("max.block.ms", "10000");
         return new KafkaProducer<>(producerProps);
     }
 
@@ -92,6 +113,9 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
                         lock.lock();
                         try {
                             Meta meta = cache.get(record.key());
+                            if (record.offset() >= latestOffset) {
+                                latch.countDown();
+                            }
                             if (record.value() == null) {
                                 // a tombstone message.
                                 cache.remove(record.key());
@@ -247,6 +271,22 @@ public class KafkaMetaContainer implements MetaContainer<Meta> {
             log.info("Topic '{}' created as compact.", META_TOPIC);
         } else {
             log.info("Topic '{}' already exists and is compact.", META_TOPIC);
+        }
+    }
+
+    public void start() {
+        try {
+            adminClient = createAdminClient(bootstrapServers);
+            producer = createProducer(bootstrapServers);
+            this.latestOffset = getLatestOffset();
+            ensureMetaTopicExists();
+            startConsumerThread(bootstrapServers);
+            // wait until the consumer has caught up to the latest offset.
+            latch.await(TIMEOUT, TimeUnit.SECONDS);
+            log.info("Meta container started");
+        } catch (ExecutionException | InterruptedException e) {
+            log.error("Failed to subscribe to meta topic", e);
+            throw new RuntimeException(e);
         }
     }
 
