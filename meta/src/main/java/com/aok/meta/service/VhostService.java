@@ -46,3 +46,4 @@ public class VhostService {
         return metaContainer.size(Vhost.class);
     }
 }
+

@@ -36,11 +36,11 @@ public class ExchangeService {
     }
 
     public Exchange getExchange(String vhost, String name) {
-        return (Exchange) metaContainer.get(Exchange.class, vhost, name);
+        return metaContainer.get(Exchange.class, vhost, name);
     }
 
     public Exchange deleteExchange(Exchange exchange) {
-        return (Exchange) metaContainer.delete(exchange);
+        return metaContainer.delete(exchange);
     }
 
     public int size() {

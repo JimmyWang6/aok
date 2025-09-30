@@ -18,6 +18,7 @@
  */
 package com.aok.core;
 
+import com.aok.meta.Binding;
 import com.aok.meta.Exchange;
 import com.aok.meta.ExchangeType;
 import com.aok.meta.Queue;
@@ -98,6 +99,8 @@ public class AmqpChannel implements ServerChannelMethodProcessor {
 
     @Override
     public void receiveExchangeBound(AMQShortString exchange, AMQShortString routingKey, AMQShortString queue) {
+        Binding binding = new Binding(AMQShortString.toString(exchange), AMQShortString.toString(queue), AMQShortString.toString(routingKey));
+
         ExchangeBoundOkBody exchangeBoundOkBody = connection.getRegistry()
             .createExchangeBoundOkBody(ExchangeBoundOkBody.OK, AMQShortString.validValueOf(""));
         connection.writeFrame(exchangeBoundOkBody.generateFrame(channelId));
