@@ -22,7 +22,7 @@ import joptsimple.OptionSpec;
 import org.apache.kafka.common.utils.Exit;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 /**
@@ -52,9 +52,9 @@ public class CommandLineUtils {
 
         if (presentCount != 1) {
             printUsageAndExit(parser, "Exactly one of the following arguments is required: " +
-                    Arrays.stream(optionSpecs)
-                            .map(Object::toString)
-                            .collect(Collectors.joining(", ")));
+                Arrays.stream(optionSpecs)
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", ")));
         }
     }
 
